@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Portfolio · FS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root {
+  --bg:    #0a0d14;
+  --bg2:   #111520;
+  --bg3:   #171c2b;
+  --bdr:   rgba(255,255,255,0.07);
+  --text:  #e8eaf0;
+  --muted: #6b7280;
+  --green: #4fffb0;
+  --red:   #ff6b6b;
+  --gold:  #f5c542;
+  --blue:  #60a5fa;
+  --mono:  'DM Mono', monospace;
+  --sans:  'Syne', sans-serif;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+body { background: var(--bg); color: var(--text); font-family: var(--sans);
+       min-height: 100vh; -webkit-font-smoothing: antialiased; padding-bottom: 32px; }
+
+/* ── Header ── */
+header { padding: 20px 16px 12px; display: flex; justify-content: space-between; align-items: flex-end; }
+.logo { font-size: 12px; font-weight: 700; letter-spacing: .14em; color: var(--green); text-transform: uppercase; }
+.updated { font-family: var(--mono); font-size: 10px; color: var(--muted); }
+
+/* ── Summary ── */
+.summary { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; padding: 0 16px 16px; }
+.stat { background: var(--bg2); border: 1px solid var(--bdr); border-radius: 10px; padding: 12px 8px; text-align: center; }
+.stat-lbl { font-family: var(--mono); font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 5px; }
+.stat-val { font-family: var(--mono); font-size: 16px; font-weight: 500; }
+
+/* ── Section ── */
+.sec { font-family: var(--mono); font-size: 10px; letter-spacing: .14em; color: var(--muted);
+       text-transform: uppercase; padding: 4px 16px 10px; }
+
+/* ── Cards ── */
+.cards { padding: 0 16px; display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
+.card { background: var(--bg2); border: 1px solid var(--bdr); border-radius: 14px; padding: 14px;
+        position: relative; overflow: hidden; }
+.card::before { content:''; position:absolute; left:0; top:0; bottom:0; width:3px; border-radius:3px 0 0 3px; }
+.card.open::before  { background: var(--green); }
+.card.watch::before { background: var(--blue); }
+
+.card-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 10px; }
+.ticker  { font-size: 22px; font-weight: 800; letter-spacing: -.02em; }
+.company { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.price-block { text-align: right; }
+.live-price  { font-family: var(--mono); font-size: 18px; font-weight: 500; }
+.chg   { font-family: var(--mono); font-size: 11px; margin-top: 2px; }
+.pos   { color: var(--green); }
+.neg   { color: var(--red); }
+.neu   { color: var(--blue); }
+
+/* ── Signal badge ── */
+.sig { display: inline-block; font-family: var(--mono); font-size: 10px; font-weight: 500;
+       padding: 3px 9px; border-radius: 20px; margin-bottom: 10px; }
+.s-buy    { background: rgba(79,255,176,.15); color: var(--green); border: 1px solid rgba(79,255,176,.3); }
+.s-good   { background: rgba(245,197,66,.12); color: var(--gold);  border: 1px solid rgba(245,197,66,.3); }
+.s-ok     { background: rgba(251,146,60,.12); color: #fb923c;      border: 1px solid rgba(251,146,60,.3); }
+.s-wait   { background: rgba(239,68,68,.10);  color: var(--red);   border: 1px solid rgba(239,68,68,.25); }
+.s-avoid  { background: rgba(239,68,68,.20);  color: #f87171;      border: 1px solid rgba(239,68,68,.4); }
+.s-profit { background: rgba(79,255,176,.12); color: var(--green); border: 1px solid rgba(79,255,176,.3); }
+.s-loss   { background: rgba(239,68,68,.12);  color: var(--red);   border: 1px solid rgba(239,68,68,.3); }
+.s-target { background: rgba(96,165,250,.15); color: var(--blue);  border: 1px solid rgba(96,165,250,.3); }
+.s-stop   { background: rgba(239,68,68,.25);  color: #fca5a5;      border: 1px solid rgba(239,68,68,.5); }
+.s-load   { background: rgba(107,114,128,.15);color: var(--muted); border: 1px solid rgba(107,114,128,.3); }
+
+/* ── Metrics grid ── */
+.metrics { display: grid; grid-template-columns: repeat(3,1fr); gap: 6px; }
+.m { background: var(--bg3); border-radius: 8px; padding: 8px; }
+.m-lbl { font-family: var(--mono); font-size: 8px; color: var(--muted); text-transform: uppercase;
+         letter-spacing: .08em; margin-bottom: 3px; }
+.m-val { font-family: var(--mono); font-size: 12px; font-weight: 500; }
+
+/* ── Progress ── */
+.prog-wrap { margin-top: 10px; }
+.prog-lbl  { display: flex; justify-content: space-between; font-family: var(--mono);
+             font-size: 9px; color: var(--muted); margin-bottom: 4px; }
+.prog-bar  { height: 4px; background: var(--bg3); border-radius: 4px; overflow: hidden; }
+.prog-fill { height: 100%; border-radius: 4px; background: var(--green); transition: width .6s ease; }
+
+/* ── Tax badge ── */
+.tax { display: inline-flex; align-items: center; gap: 4px; font-family: var(--mono);
+       font-size: 9px; padding: 2px 7px; border-radius: 20px; margin-top: 8px; }
+.tax-st { background: rgba(239,68,68,.12); color: var(--red);   border: 1px solid rgba(239,68,68,.25); }
+.tax-lt { background: rgba(79,255,176,.12);color: var(--green); border: 1px solid rgba(79,255,176,.25); }
+
+/* ── Bottom actions ── */
+.actions { position: sticky; bottom: 0; background: var(--bg);
+           padding: 12px 16px 20px; display: flex; gap: 10px;
+           border-top: 1px solid var(--bdr); }
+.btn { flex:1; padding: 15px 12px; border: none; border-radius: 12px;
+       font-family: var(--sans); font-size: 13px; font-weight: 700;
+       cursor: pointer; letter-spacing: .04em;
+       display: flex; align-items: center; justify-content: center; gap: 8px;
+       transition: opacity .15s, transform .1s; }
+.btn:active { transform: scale(.97); opacity: .85; }
+.btn-p  { background: var(--green); color: #0a0d14; }
+.btn-s  { background: var(--bg3); color: var(--text); border: 1px solid var(--bdr); }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+
+/* ── Status bar ── */
+.status-bar { display: flex; align-items: center; gap: 8px; padding: 6px 16px 14px;
+              font-family: var(--mono); font-size: 10px; color: var(--muted); }
+.spinner { width: 11px; height: 11px; border: 1.5px solid var(--bdr);
+           border-top-color: var(--green); border-radius: 50%;
+           animation: spin .8s linear infinite; flex-shrink: 0; }
+.dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); flex-shrink: 0; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Toast ── */
+.toast { position: fixed; bottom: 90px; left: 50%; transform: translateX(-50%);
+         background: var(--bg3); border: 1px solid var(--bdr);
+         color: var(--text); font-family: var(--mono); font-size: 12px;
+         padding: 10px 18px; border-radius: 30px; white-space: nowrap;
+         opacity: 0; pointer-events: none; transition: opacity .25s; z-index: 999; }
+.toast.show { opacity: 1; }
+
+/* ── Skeleton ── */
+.skel { background: linear-gradient(90deg,var(--bg2) 25%,var(--bg3) 50%,var(--bg2) 75%);
+        background-size: 200% 100%; animation: shimmer 1.4s infinite;
+        border-radius: 6px; height: 14px; margin: 4px 0; }
+@keyframes shimmer { to { background-position: -200% 0; } }
+
+/* ── Error banner ── */
+.error-banner { margin: 0 16px 16px; padding: 12px 14px; background: rgba(239,68,68,.1);
+                border: 1px solid rgba(239,68,68,.25); border-radius: 10px;
+                font-family: var(--mono); font-size: 11px; color: var(--red); display: none; }
+</style>
+</head>
+<body>
+
+<header>
+  <div>
+    <div class="logo">Portfolio · FS</div>
+    <div class="updated" id="updated">—</div>
+  </div>
+</header>
+
+<div class="summary" id="summary">
+  <div class="stat"><div class="stat-lbl">Investido</div><div class="stat-val neu skel" style="height:18px;width:70px;margin:auto"></div></div>
+  <div class="stat"><div class="stat-lbl">P&amp;L</div><div class="stat-val skel" style="height:18px;width:60px;margin:auto"></div></div>
+  <div class="stat"><div class="stat-lbl">Retorno</div><div class="stat-val skel" style="height:18px;width:50px;margin:auto"></div></div>
+</div>
+
+<div class="status-bar">
+  <div class="spinner" id="spinner"></div>
+  <span id="status-txt">Buscando preços ao vivo...</span>
+</div>
+
+<div class="error-banner" id="err-banner"></div>
+
+<div class="sec">Posições abertas</div>
+<div class="cards" id="open-cards">
+  <div class="card open"><div class="skel"></div><div class="skel" style="width:55%"></div></div>
+  <div class="card open"><div class="skel"></div><div class="skel" style="width:55%"></div></div>
+</div>
+
+<div class="sec">Watchlist — $70k pendentes</div>
+<div class="cards" id="watch-cards">
+  <div class="card watch"><div class="skel"></div><div class="skel" style="width:65%"></div></div>
+  <div class="card watch"><div class="skel"></div></div>
+  <div class="card watch"><div class="skel"></div></div>
+  <div class="card watch"><div class="skel"></div></div>
+  <div class="card watch"><div class="skel"></div></div>
+</div>
+
+<div class="actions">
+  <button class="btn btn-p" id="btn-xl" onclick="downloadExcel()" disabled>
+    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+      <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+      <polyline points="14 2 14 8 20 8"/>
+      <polyline points="16 13 12 17 8 13"/>
+      <line x1="12" y1="17" x2="12" y2="9"/>
+    </svg>
+    Baixar Excel
+  </button>
+  <button class="btn btn-s" onclick="refresh()">
+    <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+      <polyline points="23 4 23 10 17 10"/>
+      <path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/>
+    </svg>
+    Atualizar
+  </button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ─────────────────────────────────────────────────────────────────────────────
+// PORTFOLIO CONFIG
+// ─────────────────────────────────────────────────────────────────────────────
+const OPEN = {
+  MU:   { co:"Micron Technology",    sec:"Semis / AI",     entry:730.00, shares:13.70, buy:"2026-05-19", t12:1150, t18:1450, stop:750  },
+  ISRG: { co:"Intuitive Surgical",   sec:"MedTech",        entry:453.00, shares:22.08, buy:"2026-05-19", t12:585,  t18:700,  stop:380  },
+};
+const WATCH = {
+  NVDA:   { co:"NVIDIA Corp",          sec:"AI / Semis",     alloc:15000, iLo:190,  iHi:195,  gHi:205,  aHi:215,  avoid:225,  t12:272.5,stop:170  },
+  AMZN:   { co:"Amazon.com",           sec:"Cloud / Tech",   alloc:15000, iLo:248,  iHi:255,  gHi:265,  aHi:272,  avoid:275,  t12:340,  stop:220  },
+  META:   { co:"Meta Platforms",       sec:"Digital Ads",    alloc:12000, iLo:590,  iHi:610,  gHi:625,  aHi:640,  avoid:660,  t12:780,  stop:520  },
+  LLY:    { co:"Eli Lilly",            sec:"Pharma / GLP-1", alloc:12000, iLo:1000, iHi:1050, gHi:1090, aHi:1120, avoid:1150, t12:1325, stop:880  },
+  "BRK-B":{ co:"Berkshire Hathaway B", sec:"Value / Macro",  alloc:10000, iLo:455,  iHi:465,  gHi:473,  aHi:480,  avoid:490,  t12:545,  stop:420  },
+};
+const TAX_ST = 0.515, TAX_LT = 0.346, LT_DAYS = 366;
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PRICE FETCHING  — Yahoo Finance via allorigins CORS proxy
+// ─────────────────────────────────────────────────────────────────────────────
+let prices = {}, fetchedAt = null;
+
+async function fetchOne(ticker) {
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=1d`;
+  const proxy = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
+  const r = await fetch(proxy, { cache: "no-store" });
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  const j = await r.json();
+  const d = JSON.parse(j.contents);
+  const m = d.chart.result[0].meta;
+  return { price: m.regularMarketPrice, prev: m.chartPreviousClose,
+           chg: (m.regularMarketPrice - m.chartPreviousClose) / m.chartPreviousClose * 100 };
+}
+
+async function fetchAll() {
+  const all = [...Object.keys(OPEN), ...Object.keys(WATCH)];
+  const settled = await Promise.allSettled(all.map(t => fetchOne(t).then(p => [t, p])));
+  let ok = 0;
+  settled.forEach(r => { if (r.status === "fulfilled") { prices[r.value[0]] = r.value[1]; ok++; } });
+  fetchedAt = new Date();
+  return ok;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// HELPERS
+// ─────────────────────────────────────────────────────────────────────────────
+const f2 = n => n == null ? "—" : new Intl.NumberFormat("en-US",{minimumFractionDigits:2,maximumFractionDigits:2}).format(n);
+const f0 = n => n == null ? "—" : new Intl.NumberFormat("en-US",{minimumFractionDigits:0,maximumFractionDigits:0}).format(n);
+const fp = n => n == null ? "—" : (n >= 0 ? "+" : "") + f2(n) + "%";
+const fu = n => n == null ? "—" : "$" + f2(Math.abs(n));
+const held  = buy => Math.floor((Date.now() - new Date(buy)) / 86400000);
+const toLT  = buy => Math.max(0, LT_DAYS - held(buy));
+const taxR  = buy => held(buy) >= LT_DAYS ? TAX_LT : TAX_ST;
+const isLT  = buy => held(buy) >= LT_DAYS;
+
+function wSig(t, p) {
+  const w = WATCH[t];
+  if (p <= w.iHi)  return ["🟢 BUY NOW","s-buy"];
+  if (p <= w.gHi)  return ["🟡 GOOD","s-good"];
+  if (p <= w.aHi)  return ["🟠 OK","s-ok"];
+  if (p <= w.avoid)return ["🔴 WAIT","s-wait"];
+  return             ["⛔ AVOID","s-avoid"];
+}
+function oSig(t, p) {
+  const o = OPEN[t];
+  if (p <= o.stop)  return ["🚨 STOP LOSS","s-stop"];
+  if (p >= o.t12)   return ["✅ AT TARGET","s-target"];
+  if (p >= o.entry) return ["📈 PROFIT","s-profit"];
+  return              ["📉 LOSS","s-loss"];
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// RENDER
+// ─────────────────────────────────────────────────────────────────────────────
+function renderOpen() {
+  document.getElementById("open-cards").innerHTML = Object.entries(OPEN).map(([t, c]) => {
+    const px = prices[t];
+    const p  = px?.price;
+    const [sigTxt, sigCls] = p ? oSig(t, p) : ["Loading…","s-load"];
+    const pnl   = p ? (p - c.entry) * c.shares : null;
+    const pnlPct= p ? (p - c.entry) / c.entry * 100 : null;
+    const aTax  = pnl != null ? pnl * (1 - taxR(c.buy)) : null;
+    const prog  = p ? Math.min(100, Math.max(0,(p-c.entry)/(c.t12-c.entry)*100)) : 0;
+    const lt    = isLT(c.buy);
+    const dtLT  = toLT(c.buy);
+    const chg   = px?.chg;
+
+    return `<div class="card open">
+      <div class="card-top">
+        <div><div class="ticker">${t}</div><div class="company">${c.co}</div></div>
+        <div class="price-block">
+          <div class="live-price">${p ? "$"+f2(p) : "—"}</div>
+          <div class="chg ${chg!=null&&chg>=0?"pos":"neg"}">${chg!=null?fp(chg):"—"}</div>
+        </div>
+      </div>
+      <span class="sig ${sigCls}">${sigTxt}</span>
+      <div class="metrics">
+        <div class="m"><div class="m-lbl">Entry</div><div class="m-val">$${f2(c.entry)}</div></div>
+        <div class="m"><div class="m-lbl">P&amp;L $</div><div class="m-val ${pnl!=null&&pnl>=0?"pos":"neg"}">${pnl!=null?(pnl>=0?"+":"")+fu(pnl):"—"}</div></div>
+        <div class="m"><div class="m-lbl">P&amp;L %</div><div class="m-val ${pnlPct!=null&&pnlPct>=0?"pos":"neg"}">${fp(pnlPct)}</div></div>
+        <div class="m"><div class="m-lbl">Target 12m</div><div class="m-val">$${f2(c.t12)}</div></div>
+        <div class="m"><div class="m-lbl">After-Tax</div><div class="m-val ${aTax!=null&&aTax>=0?"pos":"neg"}">${aTax!=null?(aTax>=0?"+":"")+fu(aTax):"—"}</div></div>
+        <div class="m"><div class="m-lbl">LT em</div><div class="m-val ${lt?"pos":"neu"}">${lt?"✅ Agora":dtLT+"d"}</div></div>
+      </div>
+      <div class="prog-wrap">
+        <div class="prog-lbl"><span>$${f2(c.entry)}</span><span>Target $${f2(c.t12)}</span></div>
+        <div class="prog-bar"><div class="prog-fill" style="width:${prog}%"></div></div>
+      </div>
+      <span class="tax ${lt?"tax-lt":"tax-st"}">${lt?"✅ LT 34.6%":"⏳ ST 51.5%"} · ${held(c.buy)}d held</span>
+    </div>`;
+  }).join("");
+}
+
+function renderWatch() {
+  document.getElementById("watch-cards").innerHTML = Object.entries(WATCH).map(([t, c]) => {
+    const px = prices[t];
+    const p  = px?.price;
+    const [sigTxt, sigCls] = p ? wSig(t, p) : ["Loading…","s-load"];
+    const upside  = p ? (c.t12 - p) / p * 100 : null;
+    const gap     = p ? (p - c.iHi) / c.iHi * 100 : null;
+    const chg     = px?.chg;
+
+    return `<div class="card watch">
+      <div class="card-top">
+        <div><div class="ticker">${t}</div><div class="company">${c.co}</div></div>
+        <div class="price-block">
+          <div class="live-price">${p ? "$"+f2(p) : "—"}</div>
+          <div class="chg ${chg!=null&&chg>=0?"pos":"neg"}">${chg!=null?fp(chg):"—"}</div>
+        </div>
+      </div>
+      <span class="sig ${sigCls}">${sigTxt}</span>
+      <div class="metrics">
+        <div class="m"><div class="m-lbl">Ideal entry</div><div class="m-val pos">$${f0(c.iLo)}–$${f0(c.iHi)}</div></div>
+        <div class="m"><div class="m-lbl">Gap p/ ideal</div><div class="m-val ${gap!=null&&gap<=0?"pos":"neg"}">${gap!=null?fp(gap):"—"}</div></div>
+        <div class="m"><div class="m-lbl">Alocação</div><div class="m-val">$${(c.alloc/1000).toFixed(0)}k</div></div>
+        <div class="m"><div class="m-lbl">Target 12m</div><div class="m-val">$${f2(c.t12)}</div></div>
+        <div class="m"><div class="m-lbl">Upside</div><div class="m-val pos">${fp(upside)}</div></div>
+        <div class="m"><div class="m-lbl">Stop</div><div class="m-val neg">$${f2(c.stop)}</div></div>
+      </div>
+    </div>`;
+  }).join("");
+}
+
+function renderSummary() {
+  const inv  = Object.entries(OPEN).reduce((s,[t,c]) => s + c.entry * c.shares, 0);
+  const mkt  = Object.entries(OPEN).reduce((s,[t,c]) => {
+    const p = prices[t]?.price;
+    return s + (p ? p * c.shares : c.entry * c.shares);
+  }, 0);
+  const pnl  = mkt - inv;
+  const pct  = pnl / inv * 100;
+  document.getElementById("summary").innerHTML = `
+    <div class="stat"><div class="stat-lbl">Investido</div><div class="stat-val neu">$${f0(inv)}</div></div>
+    <div class="stat"><div class="stat-lbl">P&amp;L</div><div class="stat-val ${pnl>=0?"pos":"neg"}">${pnl>=0?"+":""}${fu(pnl)}</div></div>
+    <div class="stat"><div class="stat-lbl">Retorno</div><div class="stat-val ${pct>=0?"pos":"neg"}">${fp(pct)}</div></div>`;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// EXCEL DOWNLOAD
+// ─────────────────────────────────────────────────────────────────────────────
+function downloadExcel() {
+  const wb = XLSX.utils.book_new();
+
+  // Sheet 1 — Open positions
+  const rows1 = [["Ticker","Company","Entry","Shares","Cost Basis","Live Price","Mkt Value","P&L $","P&L %","Target 12m","Upside %","Stop","Tax Rate","After-Tax P&L","Days Held","Days to LT"]];
+  Object.entries(OPEN).forEach(([t, c]) => {
+    const p   = prices[t]?.price;
+    const pnl = p ? (p-c.entry)*c.shares : null;
+    const pct = p ? (p-c.entry)/c.entry*100 : null;
+    const tr  = taxR(c.buy) * 100;
+    rows1.push([t, c.co, c.entry, c.shares, +(c.entry*c.shares).toFixed(2),
+      p||"N/A", p ? +(p*c.shares).toFixed(2):"N/A",
+      pnl != null ? +pnl.toFixed(2):"N/A",
+      pct != null ? +(pct).toFixed(2):"N/A",
+      c.t12, p ? +((c.t12-p)/p*100).toFixed(2):"N/A",
+      c.stop, +tr.toFixed(1),
+      pnl != null ? +(pnl*(1-taxR(c.buy))).toFixed(2):"N/A",
+      held(c.buy), toLT(c.buy)]);
+  });
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows1), "Open Positions");
+
+  // Sheet 2 — Watchlist
+  const rows2 = [["Ticker","Company","Sector","Live Price","Signal","Ideal Entry","Gap %","Alloc $","Target 12m","Upside %","Stop"]];
+  Object.entries(WATCH).forEach(([t, c]) => {
+    const p  = prices[t]?.price;
+    const [sig] = p ? wSig(t,p) : ["—"];
+    rows2.push([t, c.co, c.sec, p||"N/A", sig,
+      `$${c.iLo}–$${c.iHi}`,
+      p ? +((p-c.iHi)/c.iHi*100).toFixed(1):"N/A",
+      c.alloc, c.t12,
+      p ? +((c.t12-p)/p*100).toFixed(1):"N/A",
+      c.stop]);
+  });
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows2), "Watchlist");
+
+  // Sheet 3 — Tax reference
+  const rows3 = [
+    ["","Short-Term (< 1 ano)","Long-Term (> 1 ano)"],
+    ["Federal","37.00%","20.00%"],["NIIT","3.80%","3.80%"],["NJ State","10.75%","10.75%"],
+    ["TOTAL EFETIVO","51.55%","34.55%"],["","",""],
+    ["Economia por $10k de ganho","~$1,700","(holding > 1 ano)"],
+    ["","",""],["Gerado em", new Date().toLocaleString("pt-BR"),""],
+  ];
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows3), "Tax Reference");
+
+  const fname = `Portfolio_FS_${new Date().toISOString().slice(0,10)}.xlsx`;
+  XLSX.writeFile(wb, fname);
+  toast(`📥 ${fname} salvo!`);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// REFRESH
+// ─────────────────────────────────────────────────────────────────────────────
+async function refresh() {
+  const sp  = document.getElementById("spinner");
+  const st  = document.getElementById("status-txt");
+  const err = document.getElementById("err-banner");
+  const btn = document.getElementById("btn-xl");
+
+  sp.style.display  = "block";
+  err.style.display = "none";
+  st.textContent    = "Buscando preços ao vivo...";
+  btn.disabled      = true;
+
+  try {
+    const ok = await fetchAll();
+    renderOpen();
+    renderWatch();
+    renderSummary();
+    const t = fetchedAt.toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"});
+    document.getElementById("updated").textContent = `Atualizado ${t}`;
+    st.textContent = `Preços ao vivo ✓  (${ok}/${Object.keys(OPEN).length + Object.keys(WATCH).length} tickers)`;
+    btn.disabled   = false;
+  } catch(e) {
+    st.textContent    = "Erro ao buscar preços";
+    err.style.display = "block";
+    err.textContent   = `Falha na API: ${e.message}. Verifique a conexão e tente novamente.`;
+  }
+  sp.style.display = "none";
+}
+
+function toast(msg, ms=2800) {
+  const el = document.getElementById("toast");
+  el.textContent = msg;
+  el.classList.add("show");
+  setTimeout(() => el.classList.remove("show"), ms);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+refresh();
+</script>
+</body>
+</html>
