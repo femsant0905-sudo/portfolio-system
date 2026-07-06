@@ -1,0 +1,45 @@
+name: Live Price Monitor
+
+on:
+  schedule:
+    # Every 15 min, Mon–Fri, 13:30–21:00 UTC = 9:30–17:00 ET (covers pre/post market)
+    - cron: "*/15 13-21 * * 1-5"
+  workflow_dispatch:        # also allow manual trigger for testing
+
+permissions:
+  contents: write
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Monitor prices and send alerts
+        run: python scripts/monitor_prices.py
+        env:
+          GMAIL_USER:     ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASS: ${{ secrets.GMAIL_APP_PASS }}
+          ALERT_EMAIL:    ${{ secrets.ALERT_EMAIL }}
+
+      - name: Commit state if changed
+        run: |
+          git config user.name  "portfolio-bot"
+          git config user.email "portfolio-bot@users.noreply.github.com"
+          git add data/state.json data/prices.json docs/index.html
+          git diff --cached --quiet || git commit -m "chore: monitor run $(date -u '+%H:%M') UTC"
+          git push
